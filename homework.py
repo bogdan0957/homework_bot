@@ -6,7 +6,7 @@ import requests
 
 import telegram
 from dotenv import load_dotenv
-from exceptions import CheckResponseError, GetApiAnswerError, ParseStatusError
+from exceptions import GetApiAnswerError, ParseStatusError
 from http import HTTPStatus
 
 load_dotenv()
@@ -36,16 +36,12 @@ logging.basicConfig(
 )
 
 
-def check_tokens():
+def check_tokens() -> bool:
     """.
     Функция chech_tokens проверяет наличие
-    токенов для работы телеграм бота.
-    """
-    try:
-        if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID is not None:
-            return PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
-    except CheckResponseError:
-        logging.critical('НЕ ХВАТАЕТ ТОКЕНОВ, ТЕЛЕГРАМ БОТ НЕ БУДЕТ РАБОТАТЬ')
+    токенов для работы телеграм бота.    """    
+    tokens_boolean = all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])  
+    return tokens_boolean            
 
 
 def send_message(bot, message):
@@ -68,14 +64,23 @@ def get_api_answer(timestamp):
     Функция get_api_answer делает запрос api к ENDPOINT
     Яндекс.Практикума и возвращает api запрос в виде словаря.
     """
+    request_dict = {
+        'url': ENDPOINT,
+        'headers': HEADERS,
+        'params': {
+            'from_date': timestamp
+        }
+    }
     try:
-        response = requests.get(url=ENDPOINT, headers=HEADERS,
-                                params={'from_date': timestamp})
+        response = requests.get(request_dict)
         if response.status_code != HTTPStatus.OK:
-            raise GetApiAnswerError('Недоступность эндпоинта')
+            raise GetApiAnswerError(
+                f'Недоступность эндпоинта к URL {ENDPOINT},' 
+                f'с параметрами в виде промежутка времени {timestamp}'
+                f'и с ошибкой в виде не соответствия статус кода запроса с HTTPStatus.OK')
         return response.json()
     except requests.RequestException:
-        logging.error('Сбой запроса к API')
+        raise ConnectionError('Сбой запроса к API')
 
 
 def check_response(response):
@@ -88,6 +93,10 @@ def check_response(response):
     homework = response['homeworks']
     if not isinstance(homework, list):
         raise TypeError('Ключ homeworks пришел не в виде списка')
+    if not homework:
+        raise TypeError('Список homework пуст')
+    if not homework[0]['status']:
+        raise TypeError('Нет ключа статус')
     status = homework[0]['status']
     return status
 
@@ -97,10 +106,12 @@ def parse_status(homework):
     Функция parse_status возвращает homework_name.
     и verdict, полученный из списка homeworks.
     """
-    if "homework_name" not in homework:
+    if 'homework_name' not in homework:
         raise KeyError('В ответе API нет ключа с названием homework_name')
+    if not homework['status']:
+        raise TypeError('Нет ключа статус')
     status = homework['status']
-    if status == 'unknown':
+    if not status in HOMEWORK_VERDICTS:
         raise ParseStatusError('Статус домашней работы недокументированный')
     verdict = HOMEWORK_VERDICTS[status]
     homework_name = homework['homework_name']
@@ -109,11 +120,12 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
     if not check_tokens():
         logging.critical('НЕТ ТОКЕНА(ТОКЕНОВ)')
         sys.exit('')
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    timestamp = int(time.time())
+    
 
     while True:
         try:
@@ -124,6 +136,7 @@ def main():
             send_message(bot, message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
+            logging.error(message)
             send_message(bot, message)
 
         finally:
