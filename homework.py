@@ -39,9 +39,10 @@ logging.basicConfig(
 def check_tokens() -> bool:
     """.
     Функция chech_tokens проверяет наличие
-    токенов для работы телеграм бота.    """    
-    tokens_boolean = all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])  
-    return tokens_boolean            
+    токенов для работы телеграм бота.
+    """
+    tokens_boolean = all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
+    return tokens_boolean
 
 
 def send_message(bot, message):
@@ -75,9 +76,10 @@ def get_api_answer(timestamp):
         response = requests.get(request_dict)
         if response.status_code != HTTPStatus.OK:
             raise GetApiAnswerError(
-                f'Недоступность эндпоинта к URL {ENDPOINT},' 
+                f'Недоступность эндпоинта к URL {ENDPOINT},'
                 f'с параметрами в виде промежутка времени {timestamp}'
-                f'и с ошибкой в виде не соответствия статус кода запроса с HTTPStatus.OK')
+                f'и с ошибкой в виде не соответствия статус кода'
+                f'запроса с HTTPStatus.OK')
         return response.json()
     except requests.RequestException:
         raise ConnectionError('Сбой запроса к API')
@@ -111,7 +113,7 @@ def parse_status(homework):
     if not homework['status']:
         raise TypeError('Нет ключа статус')
     status = homework['status']
-    if not status in HOMEWORK_VERDICTS:
+    if status not in HOMEWORK_VERDICTS:
         raise ParseStatusError('Статус домашней работы недокументированный')
     verdict = HOMEWORK_VERDICTS[status]
     homework_name = homework['homework_name']
@@ -125,7 +127,6 @@ def main():
         sys.exit('')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
-    
 
     while True:
         try:
