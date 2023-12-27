@@ -41,8 +41,7 @@ def check_tokens() -> bool:
     Функция chech_tokens проверяет наличие
     токенов для работы телеграм бота.
     """
-    tokens_boolean = all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
-    return tokens_boolean
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def send_message(bot, message):
@@ -82,7 +81,10 @@ def get_api_answer(timestamp):
                 f'запроса с HTTPStatus.OK')
         return response.json()
     except requests.RequestException:
-        raise ConnectionError('Сбой запроса к API')
+        raise ConnectionError(
+            f'Сбой запроса к API {ENDPOINT}'
+            f'с параметрами в виде промежутка времени {timestamp}.'
+            f'Нет возможности получить ответ API в ввиде словаря')
 
 
 def check_response(response):
@@ -91,14 +93,14 @@ def check_response(response):
     последней выполненной домашней работы.
     """
     if 'homeworks' not in response:
-        raise TypeError('В ответе API нет ключа homeworks')
+        raise KeyError('В ответе API нет ключа homeworks')
     homework = response['homeworks']
     if not isinstance(homework, list):
         raise TypeError('Ключ homeworks пришел не в виде списка')
     if not homework:
-        raise TypeError('Список homework пуст')
+        raise KeyError('Список homework пуст')
     if not homework[0]['status']:
-        raise TypeError('Нет ключа статус')
+        raise KeyError('Нет ключа статус')
     status = homework[0]['status']
     return status
 
@@ -111,7 +113,7 @@ def parse_status(homework):
     if 'homework_name' not in homework:
         raise KeyError('В ответе API нет ключа с названием homework_name')
     if not homework['status']:
-        raise TypeError('Нет ключа статус')
+        raise KeyError('Нет ключа статус')
     status = homework['status']
     if status not in HOMEWORK_VERDICTS:
         raise ParseStatusError('Статус домашней работы недокументированный')
@@ -124,7 +126,7 @@ def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logging.critical('НЕТ ТОКЕНА(ТОКЕНОВ)')
-        sys.exit('')
+        sys.exit('Проверьте токены, затем перезапустите бота')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
 
