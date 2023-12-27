@@ -92,13 +92,15 @@ def check_response(response):
     Функция check_response возвращает статус
     последней выполненной домашней работы.
     """
+    if not isinstance(response, dict):
+        raise TypeError('Ответ API пришел не в виде словаря')
     if 'homeworks' not in response:
         raise KeyError('В ответе API нет ключа homeworks')
     homework = response['homeworks']
     if not isinstance(homework, list):
         raise TypeError('Ключ homeworks пришел не в виде списка')
     if not homework:
-        raise KeyError('Список homework пуст')
+        raise TypeError('Список homework пуст')
     if not homework[0]['status']:
         raise KeyError('Нет ключа статус')
     status = homework[0]['status']
